@@ -1,0 +1,6 @@
+name: 'JSON:API Menu items'
+description: Adds a JSON API resource for menu items.
+type: module
+core: 8.x
+dependencies:
+  - jsonapi_resources:jsonapi_resources
