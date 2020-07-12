@@ -74,6 +74,7 @@ final class MenuItemsResource extends ResourceBase {
       $url = $menu_link->link->getUrlObject()->toString(TRUE);
 
       $fields = [
+        'description' => $menu_link->link->getDescription(),
         'enabled' => $menu_link->link->isEnabled(),
         'expanded' => $menu_link->link->isExpanded(),
         'menu_name' => $menu_link->link->getMenuName(),
@@ -85,6 +86,7 @@ final class MenuItemsResource extends ResourceBase {
           'name' => $menu_link->link->getRouteName(),
           'parameters' => $menu_link->link->getRouteParameters(),
         ],
+        'title' => $menu_link->link->getTitle(),
         'url' => $url->getGeneratedUrl(),
         'weight' => $menu_link->link->getWeight(),
       ];
