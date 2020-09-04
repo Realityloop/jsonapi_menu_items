@@ -6,10 +6,11 @@
     "Drupal",
     "JSON API"
   ],
-  "license": "GPL-2.0+",
+  "license": "GPL-2.0-or-later",
   "homepage": "https://github.com/Realityloop/jsonapi_menu_items",
   "minimum-stability": "dev",
   "require": {
-    "drupal/core": "^8.8@alpha"
+    "drupal/core": "^8.8 || ^9",
+    "drupal/jsonapi_resources": "^1.0"
   }
 }

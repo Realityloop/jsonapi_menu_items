@@ -6,7 +6,6 @@ use Drupal\jsonapi\JsonApiResource\LinkCollection;
 use Drupal\jsonapi\JsonApiResource\ResourceObject;
 use Drupal\jsonapi\JsonApiResource\ResourceObjectData;
 use Drupal\jsonapi\ResourceResponse;
-use Drupal\jsonapi\ResourceType\ResourceType;
 use Drupal\jsonapi_resources\Resource\ResourceBase;
 use Drupal\Core\Menu\MenuTreeParameters;
 use Symfony\Component\HttpFoundation\Request;
@@ -112,4 +111,5 @@ final class MenuItemsResource extends ResourceBase {
     }
     return $resource_types;
   }
+
 }
