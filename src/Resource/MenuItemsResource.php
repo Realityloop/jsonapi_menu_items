@@ -19,8 +19,6 @@ use Symfony\Component\Routing\Route;
  */
 final class MenuItemsResource extends ResourceBase {
 
-  protected $resourceType;
-
   /**
    * Process the resource request.
    *
@@ -57,8 +55,7 @@ final class MenuItemsResource extends ResourceBase {
     $items = [];
     foreach ($tree as $menu_link) {
       $id = $menu_link->link->getPluginId();
-      list($plugin, $plugin_id) = explode(':', $id);
-      $resource_type = $this->resourceTypeRepository->get('menu_link_content', 'menu_link_content');
+      list($plugin) = explode(':', $id);
 
       switch ($plugin) {
         case 'menu_link_content':
@@ -105,10 +102,14 @@ final class MenuItemsResource extends ResourceBase {
    * {@inheritdoc}
    */
   public function getRouteResourceTypes(Route $route, string $route_name): array {
-    return [
-      // @TODO - Check if module/resource exists.
-      $this->resourceTypeRepository->get('menu_link_config', 'menu_link_config'),
-      $this->resourceTypeRepository->get('menu_link_content', 'menu_link_content'),
-    ];
+    $resource_types = [];
+
+    foreach (['menu_link_config', 'menu_link_content'] as $type) {
+      $resource_type = $this->resourceTypeRepository->get($type, $type);
+      if ($resource_type) {
+        $resource_types[] = $resource_type;
+      }
+    }
+    return $resource_types;
   }
 }

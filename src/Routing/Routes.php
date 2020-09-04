@@ -16,7 +16,6 @@ use Symfony\Component\Routing\RouteCollection;
  * Each Menu will result in a jsonapi resource at: /{jsonapi_namespace}/menu_items/{menu_id}
  */
 class Routes implements ContainerInjectionInterface {
-
   const RESOURCE_NAME = MenuItemsResource::class;
 
   const JSONAPI_RESOURCE_KEY = '_jsonapi_resource';
