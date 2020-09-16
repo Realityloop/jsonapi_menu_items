@@ -19,6 +19,13 @@ use Symfony\Component\Routing\Route;
 final class MenuItemsResource extends ResourceBase {
 
   /**
+   * A list of menu items.
+   *
+   * @var array
+   */
+  protected $menuItems = [];
+
+  /**
    * Process the resource request.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
@@ -35,6 +42,7 @@ final class MenuItemsResource extends ResourceBase {
 
     $parameters = new MenuTreeParameters();
     $parameters->onlyEnabledLinks();
+    $parameters->setMinDepth(0);
 
     $menu_tree = \Drupal::menuTree();
     $tree = $menu_tree->load($menu_name, $parameters);
@@ -51,7 +59,38 @@ final class MenuItemsResource extends ResourceBase {
     ];
     $tree = $menu_tree->transform($tree, $manipulators);
 
-    $items = [];
+    $this->getMenuItems($tree, $this->menuItems);
+
+    $data = new ResourceObjectData($this->menuItems);
+    $response = $this->createJsonapiResponse($data, $request, 200, [] /* , $pagination_links */);
+
+    return $response;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getRouteResourceTypes(Route $route, string $route_name): array {
+    $resource_types = [];
+
+    foreach (['menu_link_config', 'menu_link_content'] as $type) {
+      $resource_type = $this->resourceTypeRepository->get($type, $type);
+      if ($resource_type) {
+        $resource_types[] = $resource_type;
+      }
+    }
+    return $resource_types;
+  }
+
+  /**
+   * Generate the menu items.
+   *
+   * @param array $tree
+   *   The menu tree.
+   * @param array $items
+   *   The already created items.
+   */
+  protected function getMenuItems(array $tree, array &$items = []) {
     foreach ($tree as $menu_link) {
       $id = $menu_link->link->getPluginId();
       list($plugin) = explode(':', $id);
@@ -82,34 +121,20 @@ final class MenuItemsResource extends ResourceBase {
           'name' => $menu_link->link->getRouteName(),
           'parameters' => $menu_link->link->getRouteParameters(),
         ],
-        'title' => $menu_link->link->getTitle(),
+        // @todo Don't cast this to string once we've resolved
+        // https://www.drupal.org/project/jsonapi_menu_items/issues/3171184
+        'title' => (string) $menu_link->link->getTitle(),
         'url' => $url->getGeneratedUrl(),
         'weight' => $menu_link->link->getWeight(),
       ];
       $links = new LinkCollection([]);
 
       $items[$id] = new ResourceObject($menu_link->access, $resource_type, $id, NULL, $fields, $links);
-    }
 
-    $data = new ResourceObjectData($items);
-    $response = $this->createJsonapiResponse($data, $request, 200, [] /* , $pagination_links */);
-
-    return $response;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getRouteResourceTypes(Route $route, string $route_name): array {
-    $resource_types = [];
-
-    foreach (['menu_link_config', 'menu_link_content'] as $type) {
-      $resource_type = $this->resourceTypeRepository->get($type, $type);
-      if ($resource_type) {
-        $resource_types[] = $resource_type;
+      if ($menu_link->subtree) {
+        $this->getMenuItems($menu_link->subtree, $items);
       }
     }
-    return $resource_types;
   }
 
 }
