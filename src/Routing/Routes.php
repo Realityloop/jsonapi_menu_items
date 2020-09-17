@@ -40,7 +40,11 @@ class Routes implements ContainerInjectionInterface {
     $route->addDefaults([
       static::JSONAPI_RESOURCE_KEY => static::RESOURCE_NAME,
     ]);
-
+    $route->setOption('parameters' , [
+      'menu' => [
+        'type' => 'entity:menu',
+      ]
+    ]);
     $routes->add('jsonapi_menu_items.menu', $route);
     $routes->addRequirements(['_access' => 'TRUE']);
 

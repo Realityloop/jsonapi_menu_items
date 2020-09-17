@@ -72,6 +72,38 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
     $this->assertSame($expected_items['data'], $content['data']);
+
+    // Assert response is cached with appropriate cacheability metadata such
+    // that re-saving the link with a new title yields the new title in a
+    // subsequent request.
+    $new_title = $this->randomMachineName();
+    $content_link->title = $new_title;
+    $content_link->save();
+    $response = $this->request('GET', $url, $request_options);
+    $this->assertSame(200, $response->getStatusCode());
+    $content = Json::decode($response->getBody());
+    $match = array_filter($content['data'], function (array $item) use ($content_link) {
+      return $item['id'] === 'menu_link_content:' . $content_link->uuid();
+    });
+    $this->assertEqual($new_title, reset($match)['attributes']['title']);
+
+    // Add another link and ensue cacheability metadata ensures the new item
+    // appears in a subsequent request.
+    $content_link2 = MenuLinkContent::create([
+      'link' => ['uri' => 'route:menu_test.menu_callback_title'],
+      'langcode' => 'en',
+      'enabled' => 1,
+      'title' => $link_title,
+      'menu_name' => 'jsonapi_menu_items_test',
+      'parent' => 'jsonapi_menu_test.open',
+      'weight' => 0,
+    ]);
+
+    $content_link2->save();
+    $response = $this->request('GET', $url, $request_options);
+    $this->assertSame(200, $response->getStatusCode());
+    $content = Json::decode($response->getBody());
+    $this->assertCount(5, $content['data']);
   }
 
 }

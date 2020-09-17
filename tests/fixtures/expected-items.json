@@ -2,27 +2,6 @@
   "data": [
     {
       "type": "menu_link_content--menu_link_content",
-      "id": "jsonapi_menu_test.user.login",
-      "attributes": {
-        "description": "Login.",
-        "enabled": true,
-        "expanded": false,
-        "menu_name": "jsonapi_menu_items_test",
-        "meta": [],
-        "options": [],
-        "parent": "",
-        "provider": "jsonapi_menu_items_test",
-        "route": {
-          "name": "user.login",
-          "parameters": []
-        },
-        "title": "Login",
-        "url": "%base_pathuser\/login",
-        "weight": "0"
-      }
-    },
-    {
-      "type": "menu_link_content--menu_link_content",
       "id": "jsonapi_menu_test.open",
       "attributes": {
         "description": "Home.",
@@ -39,7 +18,7 @@
         },
         "title": "Home",
         "url": "%base_pathmenu_name_test",
-        "weight": "10"
+        "weight": "-10"
       }
     },
     {
@@ -83,6 +62,27 @@
         },
         "title": "%title",
         "url": "%base_pathmenu_callback_title",
+        "weight": "0"
+      }
+    },
+    {
+      "type": "menu_link_content--menu_link_content",
+      "id": "jsonapi_menu_test.user.login",
+      "attributes": {
+        "description": "Login.",
+        "enabled": true,
+        "expanded": false,
+        "menu_name": "jsonapi_menu_items_test",
+        "meta": [],
+        "options": [],
+        "parent": "",
+        "provider": "jsonapi_menu_items_test",
+        "route": {
+          "name": "user.login",
+          "parameters": []
+        },
+        "title": "Login",
+        "url": "%base_pathuser\/login",
         "weight": "0"
       }
     }

@@ -2,12 +2,15 @@
 
 namespace Drupal\jsonapi_menu_items\Resource;
 
+use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\GeneratedUrl;
 use Drupal\jsonapi\JsonApiResource\LinkCollection;
 use Drupal\jsonapi\JsonApiResource\ResourceObject;
 use Drupal\jsonapi\JsonApiResource\ResourceObjectData;
 use Drupal\jsonapi\ResourceResponse;
 use Drupal\jsonapi_resources\Resource\ResourceBase;
 use Drupal\Core\Menu\MenuTreeParameters;
+use Drupal\system\MenuInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
 
@@ -37,18 +40,21 @@ final class MenuItemsResource extends ResourceBase {
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
-  public function process(Request $request): ResourceResponse {
-    $menu_name = $request->get('menu');
+  public function process(Request $request, MenuInterface $menu): ResourceResponse {
+    $cacheability = new CacheableMetadata();
+    $cacheability->addCacheableDependency($menu);
 
     $parameters = new MenuTreeParameters();
     $parameters->onlyEnabledLinks();
     $parameters->setMinDepth(0);
 
     $menu_tree = \Drupal::menuTree();
-    $tree = $menu_tree->load($menu_name, $parameters);
+    $tree = $menu_tree->load($menu->id(), $parameters);
 
     if (empty($tree)) {
-      return $this->createJsonapiResponse(new ResourceObjectData([]), $request, 403, []);
+      $response = $this->createJsonapiResponse(new ResourceObjectData([]), $request, 403, []);
+      $response->addCacheableDependency($cacheability);
+      return $response;
     }
 
     $manipulators = [
@@ -59,10 +65,11 @@ final class MenuItemsResource extends ResourceBase {
     ];
     $tree = $menu_tree->transform($tree, $manipulators);
 
-    $this->getMenuItems($tree, $this->menuItems);
+    $this->getMenuItems($tree, $this->menuItems, $cacheability);
 
     $data = new ResourceObjectData($this->menuItems);
     $response = $this->createJsonapiResponse($data, $request, 200, [] /* , $pagination_links */);
+    $response->addCacheableDependency($cacheability);
 
     return $response;
   }
@@ -90,10 +97,10 @@ final class MenuItemsResource extends ResourceBase {
    * @param array $items
    *   The already created items.
    */
-  protected function getMenuItems(array $tree, array &$items = []) {
+  protected function getMenuItems(array $tree, array &$items, CacheableMetadata $cache) {
     foreach ($tree as $menu_link) {
       $id = $menu_link->link->getPluginId();
-      list($plugin) = explode(':', $id);
+      [$plugin] = explode(':', $id);
 
       switch ($plugin) {
         case 'menu_link_content':
@@ -107,6 +114,8 @@ final class MenuItemsResource extends ResourceBase {
       }
 
       $url = $menu_link->link->getUrlObject()->toString(TRUE);
+      assert($url instanceof GeneratedUrl);
+      $cache->addCacheableDependency($url);
 
       $fields = [
         'description' => $menu_link->link->getDescription(),
@@ -129,10 +138,13 @@ final class MenuItemsResource extends ResourceBase {
       ];
       $links = new LinkCollection([]);
 
-      $items[$id] = new ResourceObject($menu_link->access, $resource_type, $id, NULL, $fields, $links);
+      $resource_object_cacheability = new CacheableMetadata();
+      $resource_object_cacheability->addCacheableDependency($menu_link->access);
+      $resource_object_cacheability->addCacheableDependency($cache);
+      $items[$id] = new ResourceObject($resource_object_cacheability, $resource_type, $id, NULL, $fields, $links);
 
       if ($menu_link->subtree) {
-        $this->getMenuItems($menu_link->subtree, $items);
+        $this->getMenuItems($menu_link->subtree, $items, $cache);
       }
     }
   }

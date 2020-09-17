@@ -14,7 +14,7 @@ jsonapi_menu_test.open:
   menu_name: jsonapi_menu_items_test
   description: 'Home.'
   route_name: menu_test.menu_name_test
-  weight: 10
+  weight: -10
 jsonapi_menu_test.user.logout.disabled:
   title: 'Logout (disabled)'
   menu_name: jsonapi_menu_items_test
