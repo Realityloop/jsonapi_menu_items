@@ -33,6 +33,8 @@ final class MenuItemsResource extends ResourceBase {
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
    *   The request.
+   * @param \Drupal\system\MenuInterface $menu
+   *   The menu.
    *
    * @return \Drupal\jsonapi\ResourceResponse
    *   The response.
@@ -96,6 +98,8 @@ final class MenuItemsResource extends ResourceBase {
    *   The menu tree.
    * @param array $items
    *   The already created items.
+   * @param \Drupal\Core\Cache\CacheableMetadata $cache
+   *   The cacheable metadata.
    */
   protected function getMenuItems(array $tree, array &$items, CacheableMetadata $cache) {
     foreach ($tree as $menu_link) {
