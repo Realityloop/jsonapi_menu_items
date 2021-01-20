@@ -126,7 +126,7 @@ final class MenuItemsResource extends ResourceBase {
           break;
 
         default:
-          // @TODO - Use a custom resource type?
+          // @todo Use a custom resource type?
           $resource_type = $this->resourceTypeRepository->get('menu_link_content', 'menu_link_content');
       }
 
@@ -147,8 +147,6 @@ final class MenuItemsResource extends ResourceBase {
           'name' => $menu_link->link->getRouteName(),
           'parameters' => $menu_link->link->getRouteParameters(),
         ],
-        // @todo Don't cast this to string once we've resolved
-        // https://www.drupal.org/project/jsonapi_menu_items/issues/3171184
         'title' => (string) $menu_link->link->getTitle(),
         'url' => $url->getGeneratedUrl(),
         'weight' => $menu_link->link->getWeight(),
