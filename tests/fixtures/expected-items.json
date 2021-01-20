@@ -23,27 +23,6 @@
     },
     {
       "type": "menu_link_content--menu_link_content",
-      "id": "jsonapi_menu_test.user.logout",
-      "attributes": {
-        "description": "",
-        "enabled": true,
-        "expanded": false,
-        "menu_name": "jsonapi_menu_items_test",
-        "meta": [],
-        "options": [],
-        "parent": "jsonapi_menu_test.open",
-        "provider": "jsonapi_menu_items_test",
-        "route": {
-          "name": "\u003Cfront\u003E",
-          "parameters": []
-        },
-        "title": "Inaccessible",
-        "url": "%base_path",
-        "weight": "0"
-      }
-    },
-    {
-      "type": "menu_link_content--menu_link_content",
       "id": "menu_link_content:%uuid",
       "attributes": {
         "description": null,

@@ -2,6 +2,7 @@
 
 namespace Drupal\jsonapi_menu_items\Resource;
 
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\GeneratedUrl;
 use Drupal\jsonapi\JsonApiResource\LinkCollection;
@@ -103,6 +104,18 @@ final class MenuItemsResource extends ResourceBase {
    */
   protected function getMenuItems(array $tree, array &$items, CacheableMetadata $cache) {
     foreach ($tree as $menu_link) {
+      if ($menu_link->access !== NULL && !$menu_link->access instanceof AccessResultInterface) {
+        throw new \DomainException('MenuLinkTreeElement::access must be either NULL or an AccessResultInterface object.');
+      }
+
+      if ($menu_link->access instanceof AccessResultInterface) {
+        $cache->merge(CacheableMetadata::createFromObject($menu_link->access));
+      }
+
+      // Only return accessible links.
+      if ($menu_link->access instanceof AccessResultInterface && !$menu_link->access->isAllowed()) {
+        continue;
+      }
       $id = $menu_link->link->getPluginId();
       [$plugin] = explode(':', $id);
 

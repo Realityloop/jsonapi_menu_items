@@ -63,8 +63,9 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     // There are 5 items in this menu - 4 from
     // jsonapi_menu_items_test.links.menu.yml and the content item created
     // above. One of the four in that file is disabled and should be filtered
-    // out, leaving a total of 4.
-    $this->assertCount(4, $content['data']);
+    // out, another is not accesible to the current users. This leaves a total
+    // of 3 items in the response.
+    $this->assertCount(3, $content['data']);
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/expected-items.json'), [
       '%uuid' => $content_link->uuid(),
@@ -103,7 +104,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $response = $this->request('GET', $url, $request_options);
     $this->assertSame(200, $response->getStatusCode());
     $content = Json::decode($response->getBody());
-    $this->assertCount(5, $content['data']);
+    $this->assertCount(4, $content['data']);
   }
 
 }
