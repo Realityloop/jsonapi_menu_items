@@ -1,0 +1,7 @@
+name: JSON:API Menu items test
+description: 'Test functionality for JSON:API Menu items'
+core_version_requirement: ^8.8 || ~9.0
+type: module
+dependencies:
+  - drupal:menu_link_content
+  - jsonapi_menu_items:jsonapi_menu_items
