@@ -103,9 +103,9 @@ final class MenuItemsResource extends ResourceBase {
    *   The cache metadata.
    *
    * @return \Drupal\Core\Menu\MenuTreeParameters
+   *   The Menu Tree Parameters object.
    */
   protected function applyFiltersToParams(Request $request, MenuTreeParameters $parameters) {
-
     $filter = $request->query->get('filter');
 
     if (!empty($filter['min_depth'])) {

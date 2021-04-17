@@ -95,7 +95,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
 
     // Add another link and ensue cacheability metadata ensures the new item
     // appears in a subsequent request.
-    $content_link2 = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
+    $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
     $response = $this->request('GET', $url, $request_options);
     $this->assertSame(200, $response->getStatusCode());
     $content = Json::decode($response->getBody());
@@ -103,8 +103,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
   }
 
   /**
-   * Tests the JSON:API Menu Items resource with filter parameters
-   * filter "parents"
+   * Tests the JSON:API Menu Items resource with the 'parents' filter.
    */
   public function testParametersParents() {
     $this->drupalLogin($this->account);
@@ -116,7 +115,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
-        'parents' =>  "jsonapi_menu_test.open,jsonapi_menu_test.user.login"
+        'parents' => "jsonapi_menu_test.open,jsonapi_menu_test.user.login",
       ],
     ]);
 
@@ -130,14 +129,12 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%title' => $link_title,
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
-    // assertSame only compares that the variables refer to exactly the same object instance or not.
-    // Obviously we don't have this case here. So assertSame will always fail.
+
     self::assertEquals($expected_items['data'], $content['data']);
   }
 
   /**
-   * Tests the JSON:API Menu Items resource with filter parameters
-   * filter "parent"
+   * Tests the JSON:API Menu Items resource with the 'parent' filter.
    */
   public function testParametersParent() {
     $this->drupalLogin($this->account);
@@ -147,7 +144,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
-        'parent' =>  "jsonapi_menu_test.open"
+        'parent' => "jsonapi_menu_test.open",
       ],
     ]);
 
@@ -160,14 +157,11 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
 
-    // assertSame only compares that the variables refer to exactly the same object instance or not.
-    // Obviously we don't have this case here. So assertSame will always fail.
     self::assertEquals($expected_items['data'], $content['data']);
   }
 
   /**
-   * Tests the JSON:API Menu Items resource with filter parameters
-   * filter "min_depth"
+   * Tests the JSON:API Menu Items resource with the 'min_depth' filter.
    */
   public function testParametersMinDepth() {
     $this->drupalLogin($this->account);
@@ -180,7 +174,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
-        'min_depth' =>  2
+        'min_depth' => 2,
       ],
     ]);
 
@@ -195,28 +189,22 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
 
-    // assertSame only compares that the variables refer to exactly the same object instance or not.
-    // Obviously we don't have this case here. So assertSame will always fail.
     self::assertEquals($expected_items['data'], $content['data']);
   }
 
   /**
-   * Tests the JSON:API Menu Items resource with filter parameters
-   * filter "max_depth"
+   * Tests the JSON:API Menu Items resource with the 'max_depth' filter.
    */
   public function testParametersMaxDepth() {
     $link_title = $this->randomMachineName();
     $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
-
-    //This link should be ignored.
-    $content_link2 = $this->createMenuLink($link_title, 'jsonapi_menu_test.user.logout');
 
     $request_options = [];
     $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
-        'max_depth' =>  2
+        'max_depth' => 2,
       ],
     ]);
 
@@ -231,26 +219,24 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
 
-    // assertSame only compares that the variables refer to exactly the same object instance or not.
-    // Obviously we don't have this case here. So assertSame will always fail.
     self::assertEquals($expected_items['data'], $content['data']);
   }
 
   /**
-   * Tests the JSON:API Menu Items resource with filter parameters
-   * filter conditions: filter[conditions][provider][value]=jsonapi_menu_items_test
+   * Tests the JSON:API Menu Items resource with the 'conditions' filter.
    */
   public function testParametersConditions() {
     $request_options = [];
     $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
+    // ?filter[conditions][provider][value]=jsonapi_menu_items_test.
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
-        'conditions' =>  [
+        'conditions' => [
           'provider' => [
-            'value' => 'jsonapi_menu_items_test'
-          ]
-        ]
+            'value' => 'jsonapi_menu_items_test',
+          ],
+        ],
       ],
     ]);
 
@@ -263,11 +249,20 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
       '%base_path' => Url::fromRoute('<front>')->toString(),
     ]));
 
-    // assertSame only compares that the variables refer to exactly the same object instance or not.
-    // Obviously we don't have this case here. So assertSame will always fail.
     self::assertEquals($expected_items['data'], $content['data']);
   }
 
+  /**
+   * Create menu link.
+   *
+   * @param string $title
+   *   The menu link title.
+   * @param string $parent
+   *   The menu link parent id.
+   *
+   * @return Drupal\menu_link_content\Entity\MenuLinkContent
+   *   The menu link.
+   */
   protected function createMenuLink(string $title, string $parent) {
     $content_link = MenuLinkContent::create([
       'link' => ['uri' => 'route:menu_test.menu_callback_title'],
