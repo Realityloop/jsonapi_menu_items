@@ -17,7 +17,7 @@
           "parameters": []
         },
         "title": "Logout",
-        "url": "/user/logout",
+        "url": "%base_pathuser\/logout",
         "weight": "0"
       }
     }
