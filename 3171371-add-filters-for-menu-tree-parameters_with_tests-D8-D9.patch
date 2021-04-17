@@ -1,0 +1,752 @@
+diff --git a/src/Resource/MenuItemsResource.php b/src/Resource/MenuItemsResource.php
+index ef46085..30be353 100644
+--- a/src/Resource/MenuItemsResource.php
++++ b/src/Resource/MenuItemsResource.php
+@@ -48,8 +48,10 @@ final class MenuItemsResource extends ResourceBase {
+     $cacheability->addCacheableDependency($menu);
+ 
+     $parameters = new MenuTreeParameters();
++    if ($request->query->has('filter')) {
++      $parameters = $this->applyFiltersToParams($request, $parameters);
++    }
+     $parameters->onlyEnabledLinks();
+-    $parameters->setMinDepth(0);
+ 
+     $menu_tree = \Drupal::menuTree();
+     $tree = $menu_tree->load($menu->id(), $parameters);
+@@ -92,6 +94,50 @@ final class MenuItemsResource extends ResourceBase {
+     return $resource_types;
+   }
+ 
++  /**
++   * Apply filters to the menu parameters.
++   *
++   * @param \Symfony\Component\HttpFoundation\Request $request
++   *   The request.
++   * @param \Drupal\Core\Menu\MenuTreeParameters $parameters
++   *   The cache metadata.
++   *
++   * @return \Drupal\Core\Menu\MenuTreeParameters
++   */
++  protected function applyFiltersToParams(Request $request, MenuTreeParameters $parameters) {
++
++    $filter = $request->query->get('filter');
++
++    if (!empty($filter['min_depth'])) {
++      $parameters->setMinDepth((int) $filter['min_depth']);
++    }
++
++    if (!empty($filter['max_depth'])) {
++      $parameters->setMaxDepth((int) $filter['max_depth']);
++    }
++
++    if (!empty($filter['parent'])) {
++      $parameters->setRoot($filter['parent']);
++      $parameters->excludeRoot();
++    }
++
++    if (!empty($filter['parents'])) {
++      $parents = explode(',', preg_replace("/\s+/", "", $filter['parents']));
++      $parameters->addExpandedParents($parents);
++    }
++
++    if (!empty($filter['conditions']) && is_array($filter['conditions'])) {
++      $condition_fields = array_keys($filter['conditions']);
++      foreach ($condition_fields as $definition_field) {
++        $value = !empty($filter['conditions'][$definition_field]['value']) ? $filter['conditions'][$definition_field]['value'] : '';
++        $operator = !empty($filter['conditions'][$definition_field]['operator']) ? $filter['conditions'][$definition_field]['operator'] : '=';
++        $parameters->addCondition($definition_field, $value, $operator);
++      }
++    }
++
++    return $parameters;
++  }
++
+   /**
+    * Generate the menu items.
+    *
+diff --git a/tests/fixtures/conditions-expected-items.json b/tests/fixtures/conditions-expected-items.json
+new file mode 100644
+index 0000000..1bde11a
+--- /dev/null
++++ b/tests/fixtures/conditions-expected-items.json
+@@ -0,0 +1,67 @@
++{
++  "data": [
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.open",
++      "attributes": {
++        "description": "Home.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "menu_test.menu_name_test",
++          "parameters": []
++        },
++        "title": "Home",
++        "url": "%base_pathmenu_name_test",
++        "weight": "-10"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.login",
++      "attributes": {
++        "description": "Login.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.login",
++          "parameters": []
++        },
++        "title": "Login",
++        "url": "%base_pathuser\/login",
++        "weight": "0"
++      }
++    }
++  ]
++}
+diff --git a/tests/fixtures/expected-items.json b/tests/fixtures/expected-items.json
+index 3e42b19..4dcf012 100644
+--- a/tests/fixtures/expected-items.json
++++ b/tests/fixtures/expected-items.json
+@@ -7,7 +7,7 @@
+         "description": "Home.",
+         "enabled": true,
+         "expanded": false,
+-        "menu_name": "jsonapi_menu_items_test",
++        "menu_name": "jsonapi-menu-items-test",
+         "meta": [],
+         "options": [],
+         "parent": "",
+@@ -21,6 +21,27 @@
+         "weight": "-10"
+       }
+     },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    },
+     {
+       "type": "menu_link_content--menu_link_content",
+       "id": "menu_link_content:%uuid",
+@@ -28,7 +49,7 @@
+         "description": null,
+         "enabled": true,
+         "expanded": false,
+-        "menu_name": "jsonapi_menu_items_test",
++        "menu_name": "jsonapi-menu-items-test",
+         "meta": {
+           "entity_id": "1"
+         },
+@@ -51,7 +72,7 @@
+         "description": "Login.",
+         "enabled": true,
+         "expanded": false,
+-        "menu_name": "jsonapi_menu_items_test",
++        "menu_name": "jsonapi-menu-items-test",
+         "meta": [],
+         "options": [],
+         "parent": "",
+diff --git a/tests/fixtures/max-depth-expected-items.json b/tests/fixtures/max-depth-expected-items.json
+new file mode 100644
+index 0000000..749c6d0
+--- /dev/null
++++ b/tests/fixtures/max-depth-expected-items.json
+@@ -0,0 +1,91 @@
++{
++  "data": [
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.open",
++      "attributes": {
++        "description": "Home.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "menu_test.menu_name_test",
++          "parameters": []
++        },
++        "title": "Home",
++        "url": "%base_pathmenu_name_test",
++        "weight": "-10"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "menu_link_content:%uuid",
++      "attributes": {
++        "description": null,
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": {
++          "entity_id": "1"
++        },
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "menu_link_content",
++        "route": {
++          "name": "menu_test.menu_callback_title",
++          "parameters": []
++        },
++        "title": "%title",
++        "url": "%base_pathmenu_callback_title",
++        "weight": "0"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.login",
++      "attributes": {
++        "description": "Login.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.login",
++          "parameters": []
++        },
++        "title": "Login",
++        "url": "%base_pathuser\/login",
++        "weight": "0"
++      }
++    }
++
++  ]
++}
+diff --git a/tests/fixtures/min-depth-expected-items.json b/tests/fixtures/min-depth-expected-items.json
+new file mode 100644
+index 0000000..26e2449
+--- /dev/null
++++ b/tests/fixtures/min-depth-expected-items.json
+@@ -0,0 +1,48 @@
++{
++  "data": [
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "menu_link_content:%uuid",
++      "attributes": {
++        "description": null,
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": {
++          "entity_id": "1"
++        },
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "menu_link_content",
++        "route": {
++          "name": "menu_test.menu_callback_title",
++          "parameters": []
++        },
++        "title": "%title",
++        "url": "%base_pathmenu_callback_title",
++        "weight": "0"
++      }
++    }
++  ]
++}
+diff --git a/tests/fixtures/parent-expected-items.json b/tests/fixtures/parent-expected-items.json
+new file mode 100644
+index 0000000..2094e8b
+--- /dev/null
++++ b/tests/fixtures/parent-expected-items.json
+@@ -0,0 +1,25 @@
++{
++  "data": [
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    }
++  ]
++}
+diff --git a/tests/fixtures/parents-expected-items.json b/tests/fixtures/parents-expected-items.json
+new file mode 100644
+index 0000000..f51cba7
+--- /dev/null
++++ b/tests/fixtures/parents-expected-items.json
+@@ -0,0 +1,48 @@
++{
++  "data": [
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "menu_link_content:%uuid",
++      "attributes": {
++        "description": null,
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": {
++          "entity_id": "1"
++        },
++        "options": [],
++        "parent": "jsonapi_menu_test.user.login",
++        "provider": "menu_link_content",
++        "route": {
++          "name": "menu_test.menu_callback_title",
++          "parameters": []
++        },
++        "title": "%title",
++        "url": "%base_pathmenu_callback_title",
++        "weight": "0"
++      }
++    },
++    {
++      "type": "menu_link_content--menu_link_content",
++      "id": "jsonapi_menu_test.user.logout",
++      "attributes": {
++        "description": "Logout.",
++        "enabled": true,
++        "expanded": false,
++        "menu_name": "jsonapi-menu-items-test",
++        "meta": [],
++        "options": [],
++        "parent": "jsonapi_menu_test.open",
++        "provider": "jsonapi_menu_items_test",
++        "route": {
++          "name": "user.logout",
++          "parameters": []
++        },
++        "title": "Logout",
++        "url": "/user/logout",
++        "weight": "0"
++      }
++    }
++  ]
++}
+diff --git a/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi-menu-items-test.yml b/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi-menu-items-test.yml
+new file mode 100644
+index 0000000..e4119a5
+--- /dev/null
++++ b/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi-menu-items-test.yml
+@@ -0,0 +1,5 @@
++id: jsonapi-menu-items-test
++label: JSON:API menu items test menu
++description: 'Test menu'
++langcode: en
++locked: true
+diff --git a/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi_menu_items_test.yml b/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi_menu_items_test.yml
+index d18e6e0..e69de29 100644
+--- a/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi_menu_items_test.yml
++++ b/tests/modules/jsonapi_menu_items_test/config/install/system.menu.jsonapi_menu_items_test.yml
+@@ -1,5 +0,0 @@
+-id: jsonapi_menu_items_test
+-label: JSON:API menu items test menu
+-description: 'Test menu'
+-langcode: en
+-locked: true
+diff --git a/tests/modules/jsonapi_menu_items_test/jsonapi_menu_items_test.links.menu.yml b/tests/modules/jsonapi_menu_items_test/jsonapi_menu_items_test.links.menu.yml
+index 32a932f..c7e88c2 100644
+--- a/tests/modules/jsonapi_menu_items_test/jsonapi_menu_items_test.links.menu.yml
++++ b/tests/modules/jsonapi_menu_items_test/jsonapi_menu_items_test.links.menu.yml
+@@ -1,23 +1,23 @@
+ jsonapi_menu_test.user.login:
+   title: 'Login'
+-  menu_name: jsonapi_menu_items_test
++  menu_name: jsonapi-menu-items-test
+   description: 'Login.'
+   route_name: user.login
+ jsonapi_menu_test.user.logout:
+   title: 'Logout'
+-  menu_name: jsonapi_menu_items_test
++  menu_name: jsonapi-menu-items-test
+   description: 'Logout.'
+   route_name: user.logout
+   parent: jsonapi_menu_test.open
+ jsonapi_menu_test.open:
+   title: 'Home'
+-  menu_name: jsonapi_menu_items_test
++  menu_name: jsonapi-menu-items-test
+   description: 'Home.'
+   route_name: menu_test.menu_name_test
+   weight: -10
+ jsonapi_menu_test.user.logout.disabled:
+   title: 'Logout (disabled)'
+-  menu_name: jsonapi_menu_items_test
++  menu_name: jsonapi-menu-items-test
+   description: 'Logout.'
+   route_name: user.logout
+   enabled: 0
+diff --git a/tests/src/Functional/JsonapiMenuItemsTest.php b/tests/src/Functional/JsonapiMenuItemsTest.php
+index 36ac4db..f0c59c7 100644
+--- a/tests/src/Functional/JsonapiMenuItemsTest.php
++++ b/tests/src/Functional/JsonapiMenuItemsTest.php
+@@ -37,42 +37,33 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
+    */
+   public function testJsonapiMenuItemsResource() {
+     $link_title = $this->randomMachineName();
+-    $content_link = MenuLinkContent::create([
+-      'link' => ['uri' => 'route:menu_test.menu_callback_title'],
+-      'langcode' => 'en',
+-      'enabled' => 1,
+-      'title' => $link_title,
+-      'menu_name' => 'jsonapi_menu_items_test',
+-      'parent' => 'jsonapi_menu_test.open',
+-      'weight' => 0,
+-    ]);
+-
+-    $content_link->save();
++    $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
+ 
+     $request_options = [];
+     $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
+ 
+     $url = Url::fromRoute('jsonapi_menu_items.menu', [
+-      'menu' => 'jsonapi_menu_items_test',
++      'menu' => 'jsonapi-menu-items-test',
+     ]);
+     $response = $this->request('GET', $url, $request_options);
+ 
+-    $this->assertSame(200, $response->getStatusCode());
++    self::assertSame(200, $response->getStatusCode());
+ 
+     $content = Json::decode($response->getBody());
+     // There are 5 items in this menu - 4 from
+     // jsonapi_menu_items_test.links.menu.yml and the content item created
+     // above. One of the four in that file is disabled and should be filtered
+     // out, another is not accesible to the current users. This leaves a total
+-    // of 3 items in the response.
+-    $this->assertCount(3, $content['data']);
++    // of  items in the response.
++    self::assertCount(4, $content['data']);
+ 
+     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/expected-items.json'), [
+       '%uuid' => $content_link->uuid(),
+       '%title' => $link_title,
+       '%base_path' => Url::fromRoute('<front>')->toString(),
+     ]));
+-    $this->assertSame($expected_items['data'], $content['data']);
++
++    self::assertEquals($expected_items['data'], $content['data']);
+ 
+     // Assert response is cached with appropriate cacheability metadata such
+     // that re-saving the link with a new title yields the new title in a
+@@ -80,31 +71,198 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
+     $new_title = $this->randomMachineName();
+     $content_link->title = $new_title;
+     $content_link->save();
++
+     $response = $this->request('GET', $url, $request_options);
+-    $this->assertSame(200, $response->getStatusCode());
++    self::assertSame(200, $response->getStatusCode());
++
+     $content = Json::decode($response->getBody());
+     $match = array_filter($content['data'], function (array $item) use ($content_link) {
+       return $item['id'] === 'menu_link_content:' . $content_link->uuid();
+     });
+-    $this->assertEqual($new_title, reset($match)['attributes']['title']);
++    self::assertEquals($new_title, reset($match)['attributes']['title']);
+ 
+     // Add another link and ensue cacheability metadata ensures the new item
+     // appears in a subsequent request.
+-    $content_link2 = MenuLinkContent::create([
++    $content_link2 = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(5, $content['data']);
++  }
++
++  /**
++   * Tests the JSON:API Menu Items resource with filter parameters
++   * filter "parents"
++   */
++  public function testParametersParents() {
++    $link_title = $this->randomMachineName();
++    $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.user.login');
++    $request_options = [];
++    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
++    $url = Url::fromRoute('jsonapi_menu_items.menu', [
++      'menu' => 'jsonapi-menu-items-test',
++      'filter' => [
++        'parents' =>  "jsonapi_menu_test.open, jsonapi_menu_test.user.login"
++      ],
++    ]);
++
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(2, $content['data']);
++
++    $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/parents-expected-items.json'), [
++      '%uuid' => $content_link->uuid(),
++      '%title' => $link_title,
++      '%base_path' => Url::fromRoute('<front>')->toString(),
++    ]));
++    // assertSame only compares that the variables refer to exactly the same object instance or not.
++    // Obviously we don't have this case here. So assertSame will always fail.
++    self::assertEquals($expected_items['data'], $content['data']);
++  }
++
++  /**
++   * Tests the JSON:API Menu Items resource with filter parameters
++   * filter "parent"
++   */
++  public function testParametersParent() {
++    $request_options = [];
++    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
++    $url = Url::fromRoute('jsonapi_menu_items.menu', [
++      'menu' => 'jsonapi-menu-items-test',
++      'filter' => [
++        'parent' =>  "jsonapi_menu_test.open"
++      ],
++    ]);
++
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(1, $content['data']);
++
++    $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/parent-expected-items.json'), [
++      '%base_path' => Url::fromRoute('<front>')->toString(),
++    ]));
++
++    // assertSame only compares that the variables refer to exactly the same object instance or not.
++    // Obviously we don't have this case here. So assertSame will always fail.
++    self::assertEquals($expected_items['data'], $content['data']);
++  }
++
++  /**
++   * Tests the JSON:API Menu Items resource with filter parameters
++   * filter "min_depth"
++   */
++  public function testParametersMinDepth() {
++    $link_title = $this->randomMachineName();
++    $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
++
++    $request_options = [];
++    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
++    $url = Url::fromRoute('jsonapi_menu_items.menu', [
++      'menu' => 'jsonapi-menu-items-test',
++      'filter' => [
++        'min_depth' =>  2
++      ],
++    ]);
++
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(2, $content['data']);
++
++    $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/min-depth-expected-items.json'), [
++      '%uuid' => $content_link->uuid(),
++      '%title' => $link_title,
++      '%base_path' => Url::fromRoute('<front>')->toString(),
++    ]));
++
++    // assertSame only compares that the variables refer to exactly the same object instance or not.
++    // Obviously we don't have this case here. So assertSame will always fail.
++    self::assertEquals($expected_items['data'], $content['data']);
++  }
++
++  /**
++   * Tests the JSON:API Menu Items resource with filter parameters
++   * filter "max_depth"
++   */
++  public function testParametersMaxDepth() {
++    $link_title = $this->randomMachineName();
++    $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
++
++    //This link should be ignored.
++    $content_link2 = $this->createMenuLink($link_title, 'jsonapi_menu_test.user.logout');
++
++    $request_options = [];
++    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
++    $url = Url::fromRoute('jsonapi_menu_items.menu', [
++      'menu' => 'jsonapi-menu-items-test',
++      'filter' => [
++        'max_depth' =>  2
++      ],
++    ]);
++
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(4, $content['data']);
++
++    $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/max-depth-expected-items.json'), [
++      '%uuid' => $content_link->uuid(),
++      '%title' => $link_title,
++      '%base_path' => Url::fromRoute('<front>')->toString(),
++    ]));
++
++    // assertSame only compares that the variables refer to exactly the same object instance or not.
++    // Obviously we don't have this case here. So assertSame will always fail.
++    self::assertEquals($expected_items['data'], $content['data']);
++  }
++
++  /**
++   * Tests the JSON:API Menu Items resource with filter parameters
++   * filter conditions: filter[conditions][provider][value]=jsonapi_menu_items_test
++   */
++  public function testParametersConditions() {
++    $request_options = [];
++    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
++    $url = Url::fromRoute('jsonapi_menu_items.menu', [
++      'menu' => 'jsonapi-menu-items-test',
++      'filter' => [
++        'conditions' =>  [
++          'provider' => [
++            'value' => 'jsonapi_menu_items_test'
++          ]
++        ]
++      ],
++    ]);
++
++    $response = $this->request('GET', $url, $request_options);
++    self::assertSame(200, $response->getStatusCode());
++    $content = Json::decode($response->getBody());
++    self::assertCount(3, $content['data']);
++
++    $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/conditions-expected-items.json'), [
++      '%base_path' => Url::fromRoute('<front>')->toString(),
++    ]));
++
++    // assertSame only compares that the variables refer to exactly the same object instance or not.
++    // Obviously we don't have this case here. So assertSame will always fail.
++    self::assertEquals($expected_items['data'], $content['data']);
++  }
++
++  protected function createMenuLink(string $title, string $parent) {
++    $content_link = MenuLinkContent::create([
+       'link' => ['uri' => 'route:menu_test.menu_callback_title'],
+       'langcode' => 'en',
+       'enabled' => 1,
+-      'title' => $link_title,
+-      'menu_name' => 'jsonapi_menu_items_test',
+-      'parent' => 'jsonapi_menu_test.open',
++      'title' => $title,
++      'menu_name' => 'jsonapi-menu-items-test',
++      'parent' => $parent,
+       'weight' => 0,
+     ]);
++    $content_link->save();
+ 
+-    $content_link2->save();
+-    $response = $this->request('GET', $url, $request_options);
+-    $this->assertSame(200, $response->getStatusCode());
+-    $content = Json::decode($response->getBody());
+-    $this->assertCount(4, $content['data']);
++    return $content_link;
+   }
+ 
+ }

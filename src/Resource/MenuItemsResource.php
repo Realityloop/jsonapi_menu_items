@@ -48,8 +48,10 @@ final class MenuItemsResource extends ResourceBase {
     $cacheability->addCacheableDependency($menu);
 
     $parameters = new MenuTreeParameters();
+    if ($request->query->has('filter')) {
+      $parameters = $this->applyFiltersToParams($request, $parameters);
+    }
     $parameters->onlyEnabledLinks();
-    $parameters->setMinDepth(0);
 
     $menu_tree = \Drupal::menuTree();
     $tree = $menu_tree->load($menu->id(), $parameters);
@@ -90,6 +92,50 @@ final class MenuItemsResource extends ResourceBase {
       }
     }
     return $resource_types;
+  }
+
+  /**
+   * Apply filters to the menu parameters.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request.
+   * @param \Drupal\Core\Menu\MenuTreeParameters $parameters
+   *   The cache metadata.
+   *
+   * @return \Drupal\Core\Menu\MenuTreeParameters
+   */
+  protected function applyFiltersToParams(Request $request, MenuTreeParameters $parameters) {
+
+    $filter = $request->query->get('filter');
+
+    if (!empty($filter['min_depth'])) {
+      $parameters->setMinDepth((int) $filter['min_depth']);
+    }
+
+    if (!empty($filter['max_depth'])) {
+      $parameters->setMaxDepth((int) $filter['max_depth']);
+    }
+
+    if (!empty($filter['parent'])) {
+      $parameters->setRoot($filter['parent']);
+      $parameters->excludeRoot();
+    }
+
+    if (!empty($filter['parents'])) {
+      $parents = explode(',', preg_replace("/\s+/", "", $filter['parents']));
+      $parameters->addExpandedParents($parents);
+    }
+
+    if (!empty($filter['conditions']) && is_array($filter['conditions'])) {
+      $condition_fields = array_keys($filter['conditions']);
+      foreach ($condition_fields as $definition_field) {
+        $value = !empty($filter['conditions'][$definition_field]['value']) ? $filter['conditions'][$definition_field]['value'] : '';
+        $operator = !empty($filter['conditions'][$definition_field]['operator']) ? $filter['conditions'][$definition_field]['operator'] : '=';
+        $parameters->addCondition($definition_field, $value, $operator);
+      }
+    }
+
+    return $parameters;
   }
 
   /**
