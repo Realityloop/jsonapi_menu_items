@@ -48,23 +48,30 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
   }
 
   /**
+   * Asserts whether an expected cache context was present in the last response.
+   *
+   * @param array $headers
+   *   An array of HTTP headers.
+   * @param string $expected_cache_context
+   *   The expected cache context.
+   */
+  protected function assertCacheContext(array $headers, $expected_cache_context) {
+    $cache_contexts = explode(' ', $headers['X-Drupal-Cache-Contexts'][0]);
+    $this
+      ->assertTrue(in_array($expected_cache_context, $cache_contexts), "'" . $expected_cache_context . "' is present in the X-Drupal-Cache-Contexts header.");
+  }
+
+  /**
    * Tests the JSON:API Menu Items resource.
    */
   public function testJsonapiMenuItemsResource() {
     $link_title = $this->randomMachineName();
     $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
 
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
-
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
     ]);
-    $response = $this->request('GET', $url, $request_options);
-
-    $this->assertSame(200, $response->getStatusCode());
-
-    $content = Json::decode($response->getBody());
+    [$content] = $this->getJsonApiMenuItemsResponse($url);
     // There are 5 items in this menu - 4 from
     // jsonapi_menu_items_test.links.menu.yml and the content item created
     // above. One of the four in that file is disabled and should be filtered
@@ -85,9 +92,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $new_title = $this->randomMachineName();
     $content_link->title = $new_title;
     $content_link->save();
-    $response = $this->request('GET', $url, $request_options);
-    $this->assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
+    [$content] = $this->getJsonApiMenuItemsResponse($url);
     $match = array_filter($content['data'], function (array $item) use ($content_link) {
       return $item['id'] === 'menu_link_content:' . $content_link->uuid();
     });
@@ -96,9 +101,7 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     // Add another link and ensue cacheability metadata ensures the new item
     // appears in a subsequent request.
     $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
-    $response = $this->request('GET', $url, $request_options);
-    $this->assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
+    [$content] = $this->getJsonApiMenuItemsResponse($url);
     $this->assertCount(4, $content['data']);
   }
 
@@ -110,19 +113,17 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
 
     $link_title = $this->randomMachineName();
     $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.user.login');
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
+
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
         'parents' => "jsonapi_menu_test.open,jsonapi_menu_test.user.login",
       ],
     ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
 
-    $response = $this->request('GET', $url, $request_options);
-    self::assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
     self::assertCount(2, $content['data']);
+    self::assertCacheContext($headers, 'url.query_args:filter');
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/parents-expected-items.json'), [
       '%uuid' => $content_link->uuid(),
@@ -139,19 +140,16 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
   public function testParametersParent() {
     $this->drupalLogin($this->account);
 
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
         'parent' => "jsonapi_menu_test.open",
       ],
     ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
 
-    $response = $this->request('GET', $url, $request_options);
-    self::assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
     self::assertCount(1, $content['data']);
+    self::assertCacheContext($headers, 'url.query_args:filter');
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/parent-expected-items.json'), [
       '%base_path' => Url::fromRoute('<front>')->toString(),
@@ -169,19 +167,16 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $link_title = $this->randomMachineName();
     $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
 
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
         'min_depth' => 2,
       ],
     ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
 
-    $response = $this->request('GET', $url, $request_options);
-    self::assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
     self::assertCount(2, $content['data']);
+    self::assertCacheContext($headers, 'url.query_args:filter');
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/min-depth-expected-items.json'), [
       '%uuid' => $content_link->uuid(),
@@ -190,6 +185,16 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     ]));
 
     self::assertEquals($expected_items['data'], $content['data']);
+
+    $url = Url::fromRoute('jsonapi_menu_items.menu', [
+      'menu' => 'jsonapi-menu-items-test',
+      'filter' => [
+        'min_depth' => 1,
+      ],
+    ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
+
+    self::assertCount(3, $content['data']);
   }
 
   /**
@@ -199,19 +204,16 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $link_title = $this->randomMachineName();
     $content_link = $this->createMenuLink($link_title, 'jsonapi_menu_test.open');
 
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
       'filter' => [
         'max_depth' => 2,
       ],
     ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
 
-    $response = $this->request('GET', $url, $request_options);
-    self::assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
     self::assertCount(3, $content['data']);
+    self::assertCacheContext($headers, 'url.query_args:filter');
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/max-depth-expected-items.json'), [
       '%uuid' => $content_link->uuid(),
@@ -220,14 +222,22 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     ]));
 
     self::assertEquals($expected_items['data'], $content['data']);
+
+    $url = Url::fromRoute('jsonapi_menu_items.menu', [
+      'menu' => 'jsonapi-menu-items-test',
+      'filter' => [
+        'max_depth' => 1,
+      ],
+    ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
+
+    self::assertCount(2, $content['data']);
   }
 
   /**
    * Tests the JSON:API Menu Items resource with the 'conditions' filter.
    */
   public function testParametersConditions() {
-    $request_options = [];
-    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
     // ?filter[conditions][provider][value]=jsonapi_menu_items_test.
     $url = Url::fromRoute('jsonapi_menu_items.menu', [
       'menu' => 'jsonapi-menu-items-test',
@@ -239,11 +249,10 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
         ],
       ],
     ]);
+    [$content, $headers] = $this->getJsonApiMenuItemsResponse($url);
 
-    $response = $this->request('GET', $url, $request_options);
-    self::assertSame(200, $response->getStatusCode());
-    $content = Json::decode($response->getBody());
     self::assertCount(2, $content['data']);
+    self::assertCacheContext($headers, 'url.query_args:filter');
 
     $expected_items = Json::decode(strtr(file_get_contents(dirname(__DIR__, 2) . '/fixtures/conditions-expected-items.json'), [
       '%base_path' => Url::fromRoute('<front>')->toString(),
@@ -276,6 +285,31 @@ class JsonapiMenuItemsTest extends BrowserTestBase {
     $content_link->save();
 
     return $content_link;
+  }
+
+  /**
+   * Get a JSON:API Menu Items resource response document.
+   *
+   * @param \Drupal\core\Url $url
+   *   The url for a JSON:API View.
+   *
+   * @return array
+   *   The response document and headers.
+   */
+  protected function getJsonApiMenuItemsResponse(Url $url) {
+    $request_options = [];
+    $request_options[RequestOptions::HEADERS]['Accept'] = 'application/vnd.api+json';
+
+    $response = $this->request('GET', $url, $request_options);
+
+    $this->assertSame(200, $response->getStatusCode(), var_export(Json::decode((string) $response->getBody()), TRUE));
+
+    $response_document = Json::decode((string) $response->getBody());
+
+    $this->assertIsArray($response_document['data']);
+    $this->assertArrayNotHasKey('errors', $response_document);
+
+    return [$response_document, $response->getHeaders()];
   }
 
 }

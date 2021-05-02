@@ -50,6 +50,7 @@ final class MenuItemsResource extends ResourceBase {
     $parameters = new MenuTreeParameters();
     if ($request->query->has('filter')) {
       $parameters = $this->applyFiltersToParams($request, $parameters);
+      $cacheability->addCacheContexts(['url.query_args:filter']);
     }
     $parameters->onlyEnabledLinks();
 
