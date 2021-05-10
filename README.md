@@ -37,7 +37,7 @@
 
   Adds parent menu links IDs to restrict the tree.
 
-  Example: `?filter[parent]=system.admin,system.admin_structure`
+  Example: `?filter[parents]=system.admin,system.admin_structure`
 
 - **conditions[]**
 
